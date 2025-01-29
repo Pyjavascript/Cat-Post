@@ -32,7 +32,7 @@ mongoose
 // Express app setup
 const app = express();
 const corsOptions = {
-  origin: "http://localhost:5173", // Your frontend's URL
+  origin: ["http://localhost:5173", "https://cat-post.netlify.app"], // Your frontend's URL
   methods: ["GET", "POST", "PUT", "DELETE"], // Specify allowed HTTP methods
   allowedHeaders: ["Content-Type", "Authorization"], // Specify allowed headers
 };
