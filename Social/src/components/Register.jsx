@@ -37,7 +37,7 @@ function Register() {
         console.log(userinfo);
         console.log("User Created in Firebase:", user, uid);
 
-        const response = await fetch("http://localhost:3000/register", {
+        const response = await fetch("https://cat-post-1.onrender.com/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -70,7 +70,7 @@ function Register() {
       photoURL: user.photoURL,
       uid: uid,
     };
-    const response = await fetch("http://localhost:3000/register", {
+    const response = await fetch("https://cat-post-1.onrender.com/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userPayload),
@@ -103,7 +103,7 @@ function Register() {
 
         <div className="p-5 px-10 box flex flex-col justify-center gap-5 h-screen w-screen md:w-1/2 relative">
           <div className="absolute top-5">
-            <img src="src/assets/like.png" className="w-10" alt="" />
+            <img src="/like.png" className="w-10" alt="" />
           </div>
           <div className="flex flex-col gap-1">
             <h1 className="font-semibold text-3xl text-black">
@@ -169,7 +169,7 @@ function Register() {
             className="h-10 cursor-pointer w-full border-2 border-slate-200 flex justify-center items-center px-4"
             onClick={handleGoogle}
           >
-            <img src="src/assets/google.svg" alt="" className="h-[100%]" />
+            <img src="/google.svg" alt="" className="h-[100%]" />
             <p>Sign in with Google</p>
           </div>
         </div>

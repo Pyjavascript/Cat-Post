@@ -58,7 +58,7 @@ function Posts() {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:3000/posts?user=${user?.email}`,
+        `https://cat-post-1.onrender.com/posts?user=${user?.email}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -93,7 +93,7 @@ function Posts() {
     };
 
     try {
-      const response = await fetch("http://localhost:3000/post", {
+      const response = await fetch("https://cat-post-1.onrender.com/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPost),
@@ -121,7 +121,7 @@ function Posts() {
             src={user?.photoURL ? user.photoURL : "src/assets/like.png"}
             alt="img"
             className="h-full"
-            onError={(e) => (e.target.src = "src/assets/like.png")}
+            onError={(e) => (e.target.src = "/like.png")}
           />
         </div>
         <div className="w-[63%] flex flex-col gap-2">
@@ -164,7 +164,7 @@ function Posts() {
             <div key={ind}>
               <div className="w-full p-3 flex justify-normal items-center gap-2">
                 <div className="w-8 h-8 bg-slate-300 rounded-full overflow-hidden">
-                  <img src={user?.photoURL ? user.photoURL : "src/assets/like.png"} alt="" />
+                  <img src={user?.photoURL ? user.photoURL : "/like.png"} alt="" />
                 </div>
                 <p className="font-bold"> {user?.displayName ? user.displayName : "Cat"}</p>
               </div>
