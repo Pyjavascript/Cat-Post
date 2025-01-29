@@ -95,7 +95,7 @@ function Register() {
         <div className="w-1/2 bg-slate-100 h-screen bg-center hidden md:flex flex-col justify-center items-center p-4">
           <div className="flex justify-center items-center w-full">
             <div className="w-40 flex justify-center items-center">
-              <img src="src/assets/like.png" className="w-full" alt="" />
+              <img src="/like.png" className="w-full" alt="" />
             </div>
             <h1 className="text-[13rem] font-extrabold text-black">Post</h1>
           </div>
