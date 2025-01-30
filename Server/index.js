@@ -3,17 +3,35 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const PORT = 3000;
 
-// User schema
+// MongoDB Atlas Connection
+mongoose
+  .connect("mongodb+srv://admin:<password>@catpost.edwjx.mongodb.net/social?retryWrites=true&w=majority&appName=CatPost", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
+  .then(() => console.log("✅ MongoDB Atlas connected"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+// Express app setup
+const app = express();
+app.use(cors({
+  origin: 'https://cat-post.netlify.app', // Replace with your Netlify URL
+  methods: 'GET,POST,PUT,DELETE',
+  credentials: true, // If using cookies or authentication
+}));
+
+app.use(express.json());
+
+// User Schema
 const schema = new mongoose.Schema({
   uid: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   photo: { type: String },
 });
-
 const User = mongoose.model("UserInfo", schema);
 
-// Post schema
+// Post Schema
 const postSchema = new mongoose.Schema({
   Text: { type: String },
   File: { type: String },
@@ -23,32 +41,12 @@ const postSchema = new mongoose.Schema({
 });
 const Post = mongoose.model("Post", postSchema);
 
-// Connect to MongoDB
-mongoose
-  .connect("mongodb://127.0.0.1:27017/social")
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+// Test Route
+app.get("/test", (req, res) => {
+  res.send("✅ Website Working");
+});
 
-// Express app setup
-const app = express();
-// const corsOptions = {
-//   origin: ["http://localhost:5173", "https://cat-post.netlify.app"], // Your frontend's URL
-//   methods: ["GET", "POST", "PUT", "DELETE"], // Specify allowed HTTP methods
-//   allowedHeaders: ["Content-Type", "Authorization"], // Specify allowed headers
-// };
-app.use(cors({
-  origin: 'https://cat-post.netlify.app', // Replace with your Netlify URL
-  methods: 'GET,POST,PUT,DELETE',
-  credentials: true, // If using cookies or authentication
-}));
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/test",(req,res) => {
-  res.send("Website Working")
-})
-// Register user
+// Register User
 app.post("/register", async (req, res) => {
   const { email, displayName, photoURL, uid } = req.body;
   try {
@@ -58,35 +56,35 @@ app.post("/register", async (req, res) => {
       email,
       photo: photoURL || "",
     });
-    res.status(200).json({ message: "User registered", data });
+    res.status(200).json({ message: "✅ User registered", data });
   } catch (error) {
-    res.status(500).json({ message: "Error registering user", error });
+    res.status(500).json({ message: "❌ Error registering user", error });
   }
 });
 
-// Create a post
+// Create a Post
 app.post("/post", async (req, res) => {
-  const { text, img, userId, postId,user } = req.body;
+  const { text, img, userId, postId, user } = req.body;
   try {
-    const result = await Post.create({ Text: text, File: img, userId, postId,user });
-    res.status(200).json({ message: "Post created successfully", result });
+    const result = await Post.create({ Text: text, File: img, userId, postId, user });
+    res.status(200).json({ message: "✅ Post created successfully", result });
   } catch (error) {
-    res.status(500).json({ message: "Error creating post", error });
+    res.status(500).json({ message: "❌ Error creating post", error });
   }
 });
 
-// Get all posts
+// Get All Posts
 app.get("/posts", async (req, res) => {
   const { user } = req.query;
   try {
     const posts = user ? await Post.find({ user }) : await Post.find();
     res.status(200).json(posts);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching posts", error });
+    res.status(500).json({ message: "❌ Error fetching posts", error });
   }
 });
 
-// Start server
+// Start Server
 app.listen(PORT, () =>
-  console.log(`Server running on https://cat-post.onrender.com/`)
+  console.log(`🚀 Server running on https://cat-post.onrender.com/`)
 );
