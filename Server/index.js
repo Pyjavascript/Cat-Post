@@ -31,13 +31,13 @@ mongoose
 
 // Express app setup
 const app = express();
-const corsOptions = {
-  origin: ["http://localhost:5173", "https://cat-post.netlify.app"], // Your frontend's URL
-  methods: ["GET", "POST", "PUT", "DELETE"], // Specify allowed HTTP methods
-  allowedHeaders: ["Content-Type", "Authorization"], // Specify allowed headers
-};
+// const corsOptions = {
+//   origin: ["http://localhost:5173", "https://cat-post.netlify.app"], // Your frontend's URL
+//   methods: ["GET", "POST", "PUT", "DELETE"], // Specify allowed HTTP methods
+//   allowedHeaders: ["Content-Type", "Authorization"], // Specify allowed headers
+// };
 
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 
 // Register user
