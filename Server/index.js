@@ -37,7 +37,7 @@ const app = express();
 //   allowedHeaders: ["Content-Type", "Authorization"], // Specify allowed headers
 // };
 app.use(cors({
-  origin: 'https://your-netlify-site.netlify.app', // Replace with your Netlify URL
+  origin: 'https://cat-post.netlify.app', // Replace with your Netlify URL
   methods: 'GET,POST,PUT,DELETE',
   credentials: true, // If using cookies or authentication
 }));
