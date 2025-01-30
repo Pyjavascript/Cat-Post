@@ -1,90 +1,98 @@
 const express = require("express");
-const mongoose = require("mongoose");
+const { MongoClient } = require("mongodb");
 const cors = require("cors");
-const PORT = 3000;
+const dotenv = require("dotenv");
+
+// Load environment variables
+dotenv.config();
+
+const PORT = process.env.PORT || 5000;
 
 // MongoDB Atlas Connection
-mongoose
-  .connect("mongodb+srv://admin:<password>@catpost.edwjx.mongodb.net/social?retryWrites=true&w=majority&appName=CatPost", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  })
-  .then(() => console.log("✅ MongoDB Atlas connected"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+const uri = process.env.MONGO_URI; // Mongo URI from your .env file
+const client = new MongoClient(uri);
 
-// Express app setup
-const app = express();
-app.use(cors({
-  origin: 'https://cat-post.netlify.app', // Replace with your Netlify URL
-  methods: 'GET,POST,PUT,DELETE',
-  credentials: true, // If using cookies or authentication
-}));
-
-app.use(express.json());
-
-// User Schema
-const schema = new mongoose.Schema({
-  uid: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  photo: { type: String },
-});
-const User = mongoose.model("UserInfo", schema);
-
-// Post Schema
-const postSchema = new mongoose.Schema({
-  Text: { type: String },
-  File: { type: String },
-  userId: { type: String, required: true },
-  postId: { type: String, required: true, unique: true },
-  user: { type: String, required: true },
-});
-const Post = mongoose.model("Post", postSchema);
-
-// Test Route
-app.get("/test", (req, res) => {
-  res.send("✅ Website Working");
-});
-
-// Register User
-app.post("/register", async (req, res) => {
-  const { email, displayName, photoURL, uid } = req.body;
+async function run() {
   try {
-    const data = await User.create({
-      uid,
-      name: displayName,
-      email,
-      photo: photoURL || "",
+    await client.connect();
+    console.log("✅ MongoDB Atlas connected");
+
+    const db = client.db("social"); // Database name
+    const userCollection = db.collection("users"); // User collection
+    const postCollection = db.collection("posts"); // Post collection
+
+    // Express app setup
+    const app = express();
+
+    // CORS setup
+    app.use(
+      cors({
+        origin: 'https://cat-post.netlify.app', // Replace with your Netlify URL
+        methods: 'GET,POST,PUT,DELETE',
+        credentials: true, // If using cookies or authentication
+      })
+    );
+
+    app.use(express.json());
+
+    // Test Route
+    app.get("/test", (req, res) => {
+      res.send("✅ Website Working");
     });
-    res.status(200).json({ message: "✅ User registered", data });
-  } catch (error) {
-    res.status(500).json({ message: "❌ Error registering user", error });
-  }
-});
 
-// Create a Post
-app.post("/post", async (req, res) => {
-  const { text, img, userId, postId, user } = req.body;
-  try {
-    const result = await Post.create({ Text: text, File: img, userId, postId, user });
-    res.status(200).json({ message: "✅ Post created successfully", result });
-  } catch (error) {
-    res.status(500).json({ message: "❌ Error creating post", error });
-  }
-});
+    // Register User
+    app.post("/register", async (req, res) => {
+      const { email, displayName, photoURL, uid } = req.body;
+      try {
+        const result = await userCollection.insertOne({
+          uid,
+          name: displayName,
+          email,
+          photo: photoURL || "",
+        });
+        res.status(200).json({ message: "✅ User registered", data: result });
+      } catch (error) {
+        res.status(500).json({ message: "❌ Error registering user", error });
+      }
+    });
 
-// Get All Posts
-app.get("/posts", async (req, res) => {
-  const { user } = req.query;
-  try {
-    const posts = user ? await Post.find({ user }) : await Post.find();
-    res.status(200).json(posts);
-  } catch (error) {
-    res.status(500).json({ message: "❌ Error fetching posts", error });
-  }
-});
+    // Create a Post
+    app.post("/post", async (req, res) => {
+      const { text, img, userId, postId, user } = req.body;
+      try {
+        const result = await postCollection.insertOne({
+          Text: text,
+          File: img,
+          userId,
+          postId,
+          user,
+        });
+        res.status(200).json({ message: "✅ Post created successfully", result });
+      } catch (error) {
+        res.status(500).json({ message: "❌ Error creating post", error });
+      }
+    });
 
-// Start Server
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on https://cat-post.onrender.com/`)
-);
+    // Get All Posts
+    app.get("/posts", async (req, res) => {
+      const { user } = req.query;
+      try {
+        const posts = user
+          ? await postCollection.find({ user }).toArray()
+          : await postCollection.find().toArray();
+        res.status(200).json(posts);
+      } catch (error) {
+        res.status(500).json({ message: "❌ Error fetching posts", error });
+      }
+    });
+
+    // Start Server
+    app.listen(PORT, () =>
+      console.log(`🚀 Server running on http://localhost:${PORT}/` || `https://cat-post.onrender.com/`)
+    );
+  } catch (error) {
+    console.error("❌ MongoDB connection error:", error);
+  }
+}
+
+run().catch(console.dir);
