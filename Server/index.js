@@ -6,10 +6,11 @@ const dotenv = require("dotenv");
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 // MongoDB Atlas Connection
-const uri = process.env.MONGO_URI; // Mongo URI from your .env file
+const uri = "mongodb+srv://admin:admin@catpost.edwjx.mongodb.net/?retryWrites=true&w=majority&appName=CatPost";
+ // Mongo URI from your .env file
 const client = new MongoClient(uri);
 
 async function run() {
