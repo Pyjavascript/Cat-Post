@@ -36,10 +36,18 @@ const app = express();
 //   methods: ["GET", "POST", "PUT", "DELETE"], // Specify allowed HTTP methods
 //   allowedHeaders: ["Content-Type", "Authorization"], // Specify allowed headers
 // };
+app.use(cors({
+  origin: 'https://your-netlify-site.netlify.app', // Replace with your Netlify URL
+  methods: 'GET,POST,PUT,DELETE',
+  credentials: true, // If using cookies or authentication
+}));
 
 app.use(cors());
 app.use(express.json());
 
+app.get("/test",(req,res) => {
+  res.send("Website Working")
+})
 // Register user
 app.post("/register", async (req, res) => {
   const { email, displayName, photoURL, uid } = req.body;
