@@ -37,7 +37,7 @@ function Register() {
         console.log(userinfo);
         console.log("User Created in Firebase:", user, uid);
 
-        const response = await fetch("https://cat-post-1.onrender.com/register", {
+        const response = await fetch("https://cat-post.onrender.com/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -70,7 +70,7 @@ function Register() {
       photoURL: user.photoURL,
       uid: uid,
     };
-    const response = await fetch("https://cat-post-1.onrender.com/register", {
+    const response = await fetch("https://cat-post.onrender.com/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userPayload),

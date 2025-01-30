@@ -58,7 +58,7 @@ function Posts() {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://cat-post-1.onrender.com/posts?user=${user?.email}`,
+        `https://cat-post.onrender.com/posts?user=${user?.email}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -93,7 +93,7 @@ function Posts() {
     };
 
     try {
-      const response = await fetch("https://cat-post-1.onrender.com/post", {
+      const response = await fetch("https://cat-post.onrender.com/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPost),
