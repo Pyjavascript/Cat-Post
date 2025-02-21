@@ -28,7 +28,7 @@ async function run() {
     // CORS setup
     app.use(
       cors({
-        origin: 'https://cat-post.netlify.app', // Replace with your Netlify URL
+        origin: ['https://cat-post.netlify.app','http://localhost:5173','http://localhost:5174'], // Replace with your Netlify URL
         methods: 'GET,POST,PUT,DELETE',
         credentials: true, // If using cookies or authentication
       })
@@ -87,9 +87,21 @@ async function run() {
       }
     });
 
+    // Delete User
+    app.delete("/delete", async (req, res) => {
+      const { email } = req.body;
+      try {
+        const result = await userCollection.deleteOne({ email });
+        const posts = await postCollection.deleteMany({ "user.email": email });
+        res.status(200).json({ message: "✅ User and posts deleted", userDeleted: result, postsDeleted: posts });
+      } catch (error) {
+        res.status(500).json({ message: "❌ Error deleting user and posts", error });
+      }
+    }); // Added missing closing bracket
+
     // Start Server
     app.listen(PORT, () =>
-      console.log(`🚀 Server running on http://localhost:${PORT}/` || `https://cat-post.onrender.com/`)
+      console.log(`🚀 Server running on http://localhost:${PORT}/` || `http://localhost:5000/`)
     );
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);

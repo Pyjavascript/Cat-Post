@@ -1,5 +1,13 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword,signOut } from "firebase/auth";
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut 
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDalFqu2wmlMAfknV3oi7o9C6Xf_pZitfc",
@@ -13,7 +21,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-
 const googleProvider = new GoogleAuthProvider();
 
 // Listen to auth state changes
@@ -41,9 +48,11 @@ const createUser = async (email, pass) => {
     throw e;
   }
 };
+
 const logout = () => {
-  signOut(auth)
+  signOut(auth);
 };
+
 const Login = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -53,4 +62,4 @@ const Login = async (email, password) => {
   }
 };
 
-export { logout,  SignWithGoogle, createUser, monitorAuthState,Login };
+export { logout, SignWithGoogle, createUser, monitorAuthState, Login };

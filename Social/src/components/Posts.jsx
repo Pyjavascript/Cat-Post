@@ -58,7 +58,7 @@ function Posts() {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://cat-post.onrender.com/posts?user=${user?.email}`,
+        `http://localhost:5000/posts?user=${user?.email}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -93,7 +93,7 @@ function Posts() {
     };
 
     try {
-      const response = await fetch("https://cat-post.onrender.com/post", {
+      const response = await fetch("http://localhost:5000/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPost),
@@ -158,11 +158,13 @@ function Posts() {
       {/* Posts Display Section */}
       <div className="flex flex-col">
         {loading ? (
-          <p>Loading posts...</p>
+          <div className="h-[50vh] w-screen flex justify-center items-center">
+            <p>Loading posts...</p>
+          </div>
         ) : post.length > 0 ? (
           post.map((elem, ind) => (
             <div key={ind}>
-              <div className="w-full p-3 flex justify-normal items-center gap-2">
+              <div className="w-full p-3 px-4 flex justify-normal items-center gap-2">
                 <div className="w-8 h-8 bg-slate-300 rounded-full overflow-hidden">
                   <img src={user?.photoURL ? user.photoURL : "/like.png"} alt="" />
                 </div>
@@ -175,12 +177,14 @@ function Posts() {
                 {elem.File && (
                   <img src={elem.File} alt="Post" className="w-full md:w-1/2" />
                 )}
-                <p className="pl-3 pb-2"><span className="font-bold">Post:</span> {elem.Text}</p>
+                <p className="pl-4 py-2"><span className="font-bold">Post:</span> {elem.Text}</p>
               </div>
             </div>
           ))
         ) : (
-          <p>No posts available</p>
+          <div className="h-[50vh] md:w-full w-screen flex justify-center items-center">
+            <p>No post availiable</p>
+          </div>
         )}
       </div>
     </div>
