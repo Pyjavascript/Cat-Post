@@ -101,7 +101,7 @@ async function run() {
 
     // Start Server
     app.listen(PORT, () =>
-      console.log(`🚀 Server running on http://localhost:${PORT}/` || `http://localhost:5000/`)
+      console.log(`🚀 Server running on http://localhost:${PORT}/` || `https://cat-post.onrender.com/`)
     );
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);

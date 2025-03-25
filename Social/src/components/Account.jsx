@@ -75,7 +75,7 @@ function Account() {
       }
 
       // Send request to backend to delete user data
-      const response = await fetch("http://localhost:5000/delete", {
+      const response = await fetch("https://cat-post.onrender.com/delete", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -100,7 +100,7 @@ function Account() {
     }
   };
   function EditProfile() {
-    fetch("http://localhost:5000/update", {
+    fetch("https://cat-post.onrender.com/update", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
