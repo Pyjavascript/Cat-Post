@@ -92,7 +92,7 @@ async function run() {
       const { email } = req.body;
       try {
         const result = await userCollection.deleteOne({ email });
-        const posts = await postCollection.deleteMany({ "user.email": email });
+        const posts = await postCollection.deleteMany({ "user": email });
         res.status(200).json({ message: "✅ User and posts deleted", userDeleted: result, postsDeleted: posts });
       } catch (error) {
         res.status(500).json({ message: "❌ Error deleting user and posts", error });

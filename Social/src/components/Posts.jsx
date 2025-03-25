@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { monitorAuthState } from "../firebase/index";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
+import AudioRecorder from './AudioRecorder'
 
 function Posts() {
   const [user, setUser] = useState(null);
@@ -36,6 +37,7 @@ function Posts() {
     if (!file) return;
 
     setIsUploading(true);
+    alert("Uploading image...");
     const formData = new FormData();
     formData.set("image", file);
 
@@ -47,6 +49,7 @@ function Posts() {
       const imageUrl = response.data.data.display_url;
       setImgURL(imageUrl);
       console.log("Image uploaded successfully:", imageUrl);
+      alert("Image uploaded successfully");
     } catch (error) {
       console.error("Image upload failed:", error);
     } finally {
@@ -134,16 +137,22 @@ function Posts() {
           />
           <div className="text-2xl flex gap-2">
             <label htmlFor="file">
-              {isUploading ? (
+              {/* {isUploading ? (
                 <div className="text-blue-500 animate-pulse">
                   <ion-icon name="image-outline"></ion-icon>
                 </div>
               ) : (
                 <ion-icon name="image-outline"></ion-icon>
-              )}
+              )} */}
+              <div className="w-7">
+              <img src="./uploadImg.png" alt="" />
+              </div>
             </label>
             <input type="file" id="file" hidden onChange={handleImageUpload} />
+            <AudioRecorder/>
           </div>
+          {/* here */}
+          
         </div>
         <div className="flex items-end md:ml-30">
           <button
