@@ -1,16 +1,14 @@
 const express = require("express");
+const multer = require("multer");
 const { MongoClient } = require("mongodb");
 const cors = require("cors");
 const dotenv = require("dotenv");
-
-// Load environment variables
 dotenv.config();
 
 const PORT = 5000;
 
-// MongoDB Atlas Connection
-const uri = "mongodb+srv://admin:admin@catpost.edwjx.mongodb.net/?retryWrites=true&w=majority&appName=CatPost";
- // Mongo URI from your .env file
+const uri = process.env.MONGODB_URI;
+
 const client = new MongoClient(uri);
 
 async function run() {
@@ -24,19 +22,19 @@ async function run() {
 
     // Express app setup
     const app = express();
+    const upload = multer({ dest: "uploads/" });
 
     // CORS setup
     app.use(
       cors({
-        origin: ['https://cat-post.netlify.app','http://localhost:5173','http://localhost:5174'], // Replace with your Netlify URL
+        origin: ['https://cat-post.netlify.app','http://localhost:5173','http://localhost:5174'],
         methods: 'GET,POST,PUT,DELETE',
-        credentials: true, // If using cookies or authentication
+        credentials: true,
       })
     );
 
     app.use(express.json());
 
-    // Test Route
     app.get("/test", (req, res) => {
       res.send("✅ Website Working");
     });
@@ -58,21 +56,27 @@ async function run() {
     });
 
     // Create a Post
-    app.post("/post", async (req, res) => {
-      const { text, img, userId, postId, user } = req.body;
+    app.post("/post", upload.single("audio"), async (req, res) => {
       try {
-        const result = await postCollection.insertOne({
-          Text: text,
-          File: img,
-          userId,
-          postId,
-          user,
-        });
-        res.status(200).json({ message: "✅ Post created successfully", result });
+          const { text, img, userId, postId, user } = req.body;
+          const audioFilePath = req.file ? req.file.path : null; // Store file path in DB
+  
+          const result = await postCollection.insertOne({
+              text,
+              img,
+              audioFile: audioFilePath, // Store the file path
+              userId,
+              postId,
+              user,
+          });
+  
+          res.status(200).json({ message: "✅ Post created successfully", result });
       } catch (error) {
-        res.status(500).json({ message: "❌ Error creating post", error });
+          res.status(500).json({ message: "❌ Error creating post", error });
       }
-    });
+  });
+  // Serve static files
+app.use("/uploads", express.static("uploads"));  
 
     // Get All Posts
     app.get("/posts", async (req, res) => {
@@ -97,11 +101,21 @@ async function run() {
       } catch (error) {
         res.status(500).json({ message: "❌ Error deleting user and posts", error });
       }
-    }); // Added missing closing bracket
+    }); 
 
-    // Start Server
+    // Get All Users EXCEPT the current user
+    app.get("/users", async (req, res) => {
+      const { email } = req.query;
+      try {
+        const users = await userCollection.find({ email: { $ne: email } }).toArray();
+        res.status(200).json(users);
+      } catch (error) {
+        res.status(500).json({ message: "❌ Error fetching users", error });
+      }
+    });
+
     app.listen(PORT, () =>
-      console.log(`🚀 Server running on http://localhost:${PORT}/` || `https://cat-post.onrender.com/`)
+      console.log(`🚀 Server running on http://localhost:${PORT}/` || `http://localhost:5000/`)
     );
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);

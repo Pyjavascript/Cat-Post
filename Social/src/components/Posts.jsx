@@ -16,7 +16,7 @@ function Posts() {
   useEffect(() => {
     monitorAuthState((currentUser) => {
       setUser(currentUser);
-      console.log("User:", currentUser);
+      // console.log("User:", currentUser);
     });
 
     const cachedPosts = JSON.parse(localStorage.getItem("posts"));
@@ -61,7 +61,7 @@ function Posts() {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://cat-post.onrender.com/posts?user=${user?.email}`,
+        `http://localhost:5000/posts?user=${user?.email}`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -90,13 +90,14 @@ function Posts() {
     const newPost = {
       text: text,
       img: imgURL,
+      // audio:"",
       userId: user.uid,
       postId: uuidv4(),
       user: user.email,
     };
 
     try {
-      const response = await fetch("https://cat-post.onrender.com/post", {
+      const response = await fetch("http://localhost:5000/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPost),
@@ -186,7 +187,7 @@ function Posts() {
                 {elem.File && (
                   <img src={elem.File} alt="Post" className="w-full md:w-1/2" />
                 )}
-                <p className="pl-4 py-2"><span className="font-bold">Post:</span> {elem.Text}</p>
+                <p className="pl-4 py-2"><span className="font-bold">Post:</span> {elem.text}</p>
               </div>
             </div>
           ))

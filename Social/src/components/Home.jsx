@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Posts, Chat, Notification, Account } from "../index";
+import { Posts, Chat, Users, Account } from "../index";
 import {logout} from "../firebase/index"
 import { useNavigate } from "react-router-dom";
 
@@ -35,9 +35,9 @@ function Home() {
               </h1>
               <h1
                 className="cursor-pointer hover:text-[1.2rem] transition-all hover:border-b-2 p-2 flex justify-center items-center"
-                onClick={() => SetPage("notification")}
+                onClick={() => SetPage("Users")}
               >
-                Notification
+                Users
               </h1>
               <h1
                 className="cursor-pointer hover:text-[1.2rem] transition-all hover:border-b-2 p-2 flex justify-center items-center"
@@ -56,8 +56,8 @@ function Home() {
                 return <Posts />;
               case "chat":
                 return <Chat />;
-              case "notification":
-                return <Notification />;
+              case "Users":
+                return <Users />;
               case "account":
                 return <Account />;
               default:
