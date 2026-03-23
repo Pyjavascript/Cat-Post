@@ -1,148 +1,174 @@
-import { useState, useEffect } from "react";
-import { monitorAuthState } from "../firebase/index";
-import { useNavigate } from "react-router-dom"; 
-import { 
-  getAuth, 
-  deleteUser, 
-  EmailAuthProvider, 
-  reauthenticateWithCredential, 
-  GoogleAuthProvider, 
-  reauthenticateWithPopup 
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  EmailAuthProvider,
+  GoogleAuthProvider,
+  deleteUser,
+  getAuth,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
 } from "firebase/auth";
+import { buildApiUrl } from "../api";
+import { monitorAuthState, syncAuthProfile } from "../firebase/index";
 
 function Account() {
   const [user, setUser] = useState(null);
+  const [profileName, setProfileName] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState("");
+  const [status, setStatus] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    monitorAuthState((currentUser) => {
+    const unsubscribe = monitorAuthState((currentUser) => {
       setUser(currentUser);
-      console.log("User:", currentUser);
+      setProfileName(currentUser?.displayName || "");
+      setProfilePhoto(currentUser?.photoURL || "");
     });
+
+    return unsubscribe;
   }, []);
 
-  // Reauthenticate User (For Email/Password Login)
   const reauthenticateUser = async (password) => {
     const auth = getAuth();
-    const user = auth.currentUser;
+    const currentUser = auth.currentUser;
 
-    if (!user) {
-      console.log("No user is signed in.");
-      return;
+    if (!currentUser || !password) {
+      throw new Error("Reauthentication cancelled");
     }
 
-    const credential = EmailAuthProvider.credential(user.email, password);
-    
-    try {
-      await reauthenticateWithCredential(user, credential);
-      console.log("Reauthentication successful");
-    } catch (error) {
-      console.error("Reauthentication failed:", error.message);
-      throw error;
-    }
+    const credential = EmailAuthProvider.credential(currentUser.email, password);
+    await reauthenticateWithCredential(currentUser, credential);
   };
 
-  // Reauthenticate User (For Google Sign-In)
   const reauthenticateWithGoogle = async () => {
     const auth = getAuth();
     const provider = new GoogleAuthProvider();
-
-    try {
-      await reauthenticateWithPopup(auth.currentUser, provider);
-      console.log("Reauthenticated with Google");
-    } catch (error) {
-      console.error("Google Reauthentication failed:", error.message);
-      throw error;
-    }
+    await reauthenticateWithPopup(auth.currentUser, provider);
   };
 
-  // Delete User Function
-  const deleteuser = async () => {
+  const deleteCurrentUser = async () => {
     if (!user) {
-      console.log("No user found.");
       return;
     }
 
     try {
       const auth = getAuth();
 
-      // Check if user signed in with Email/Password or Google
-      if (user.providerData[0].providerId === "password") {
+      if (user.providerData[0]?.providerId === "password") {
         const password = prompt("Enter your password to confirm account deletion:");
         await reauthenticateUser(password);
-      } else if (user.providerData[0].providerId === "google.com") {
+      } else if (user.providerData[0]?.providerId === "google.com") {
         await reauthenticateWithGoogle();
       }
 
-      // Send request to backend to delete user data
-      const response = await fetch("http://localhost:5000/delete", {
+      await fetch(buildApiUrl("/delete"), {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: user.email }),
       });
 
-      const data = await response.json();
-      console.log("Backend Response:", data);
-
-      // Delete user from Firebase Authentication
       await deleteUser(auth.currentUser);
-      
-      console.log("User deleted successfully from Firebase");
-      navigate
-        ? navigate("/")
-        : console.log("No navigation object found.");
-      
-
+      navigate("/");
     } catch (error) {
-      console.log("Error deleting user:", error.message);
+      console.error("Error deleting user:", error.message);
+      setStatus("Could not delete account right now.");
     }
   };
-  function EditProfile() {
-    fetch("http://localhost:5000/update", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: user.email,
-        name: "New Name",
-        photo: "New Photo",
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("Updated User:", data);
-    })
-  }
+
+  const editProfile = async () => {
+    if (!user?.email) {
+      return;
+    }
+
+    try {
+      setStatus("Saving profile...");
+      const response = await fetch(buildApiUrl("/update"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          name: profileName,
+          photo: profilePhoto,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile");
+      }
+
+      await syncAuthProfile({
+        displayName: profileName,
+        photoURL: profilePhoto,
+      });
+
+      setUser((currentUser) =>
+        currentUser
+          ? {
+              ...currentUser,
+              displayName: profileName,
+              photoURL: profilePhoto,
+            }
+          : currentUser
+      );
+      setStatus("Profile updated.");
+    } catch (error) {
+      console.error("Profile update failed:", error);
+      setStatus("Profile update failed.");
+    }
+  };
 
   return (
-    <div className="h-full w-full bg-white">
-      <div className="w-full">
-        <div className="flex flex-col items-center justify-center gap-2 pt-2">
+    <div className="min-h-full bg-white p-4 md:px-8">
+      <div className="border-b-2 border-dashed border-slate-300 py-4">
+        <h1 className="text-3xl font-extrabold text-black">Account</h1>
+      </div>
+
+      <div className="py-6">
+        <div className="flex flex-col items-center justify-center gap-2">
           <img
-            src={user?.photoURL ? user.photoURL : "/like.png"}
+            src={user?.photoURL || "/like.png"}
             alt="Profile"
-            className="w-20 h-20 rounded-full"
+            className="h-24 w-24 rounded-full object-cover"
           />
-          <h1 className="text-lg font-bold">{user?.displayName}</h1>
-          <h1 className="text-lg font-bold">{user?.email}</h1>
+          <h1 className="text-xl font-bold text-black">{user?.displayName}</h1>
+          <h2 className="text-sm text-slate-500">{user?.email}</h2>
         </div>
-        <div className="w-full p-4 flex flex-col gap-2">
-          <div className="font-bold text-lg border-b-2 border-gray-300 border-dashed py-3 flex justify-between items-center" onClick={EditProfile}>
-            <p>Edit Profile</p>
-            <div className="flex justify-between items-center text-2xl">
-              <ion-icon name="arrow-forward-outline"></ion-icon>
-            </div>
-          </div>
-          <div className="text-red-500 font-bold text-lg border-b-2 border-gray-300 border-dashed py-3 flex justify-between items-center" onClick={deleteuser}>
-            <p>Delete Account</p>
-            <div className="flex justify-between items-center text-2xl">
-              <ion-icon name="trash-outline"></ion-icon>
-            </div>
-          </div>
+
+        <div className="mt-8 grid gap-4">
+          <input
+            type="text"
+            className="simple-input px-4 py-3"
+            placeholder="Display name"
+            value={profileName}
+            onChange={(event) => setProfileName(event.target.value)}
+          />
+          <input
+            type="url"
+            className="simple-input px-4 py-3"
+            placeholder="Profile photo URL"
+            value={profilePhoto}
+            onChange={(event) => setProfilePhoto(event.target.value)}
+          />
         </div>
+
+        <div className="mt-6 flex flex-col gap-3 md:flex-row">
+          <button
+            type="button"
+            onClick={editProfile}
+            className="bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-700"
+          >
+            Save Profile
+          </button>
+          <button
+            type="button"
+            onClick={deleteCurrentUser}
+            className="bg-red-400 px-5 py-3 text-sm font-bold text-white transition hover:bg-black"
+          >
+            Delete Account
+          </button>
+        </div>
+
+        {status ? <p className="mt-4 text-sm text-slate-500">{status}</p> : null}
       </div>
     </div>
   );

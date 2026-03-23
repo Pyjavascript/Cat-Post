@@ -1,12 +1,13 @@
 import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
-  onAuthStateChanged, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut 
+import {
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -23,43 +24,31 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
-// Listen to auth state changes
-const monitorAuthState = (callback) => {
-  onAuthStateChanged(auth, (user) => {
-    callback(user); // Pass the user to your app state management
-  });
-};
+const monitorAuthState = (callback) => onAuthStateChanged(auth, callback);
 
 const SignWithGoogle = async () => {
-  try {
-    const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
-  } catch (e) {
-    console.error("Google Sign-In Error:", e);
-    throw e;
-  }
+  const result = await signInWithPopup(auth, googleProvider);
+  return result.user;
 };
 
-const createUser = async (email, pass) => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-    return userCredential.user;
-  } catch (e) {
-    throw e;
-  }
+const createUser = async (email, password) => {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  return userCredential.user;
 };
 
-const logout = () => {
-  signOut(auth);
-};
+const logout = () => signOut(auth);
 
 const Login = async (email, password) => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log("User logged in:", userCredential.user);
-  } catch (error) {
-    console.error("Error logging in:", error.message);
-  }
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  return userCredential.user;
 };
 
-export { logout, SignWithGoogle, createUser, monitorAuthState, Login };
+const syncAuthProfile = async (profile) => {
+  if (!auth.currentUser) {
+    return;
+  }
+
+  await updateProfile(auth.currentUser, profile);
+};
+
+export { Login, SignWithGoogle, createUser, logout, monitorAuthState, syncAuthProfile };

@@ -1,51 +1,77 @@
-import {useState,useEffect} from "react";
+import { useEffect, useState } from "react";
+import { buildApiUrl } from "../api";
+import { monitorAuthState } from "../firebase/index";
 
-function Users() {
+function Users({ onOpenChat }) {
   const [users, setUsers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+
   useEffect(() => {
-    fetch("http://localhost:5000/users",{
-      method:"GET",
-      headers:{
-        "Content-Type":"application/json"
-      }
-    }).then((response)=>{
-      if(!response.ok){
-        throw new Error("Failed to fetch users");
-      }
-      return response.json();
+    const unsubscribe = monitorAuthState((user) => {
+      setCurrentUser(user);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser?.email) {
+      return;
     }
-    ).then((data)=>{
-      setUsers(data);
-    }).catch((error)=>{
-      console.error("Error fetching users:",error);
-      
-    })
-  })
+
+    fetch(buildApiUrl(`/users?email=${encodeURIComponent(currentUser.email)}`))
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch users");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setUsers(data);
+      })
+      .catch((error) => {
+        console.error("Error fetching users:", error);
+      });
+  }, [currentUser]);
 
   return (
-    <div className="h-full w-full bg-white">
-     <div className="flex justify-between items-center p-3">
-     <h1 className="text-2xl font-extrabold">All Users</h1>
-      <div className="flex items-center justify-center text-3xl">
-      <ion-icon name="chevron-forward-circle-outline"></ion-icon>
+    <div className="min-h-full bg-white p-4 md:px-8">
+      <div className="border-b-2 border-dashed border-slate-300 py-4">
+        <h1 className="text-3xl font-extrabold text-black">All Users</h1>
+        <p className="text-sm text-slate-500">{users.length} users</p>
       </div>
-     </div>
 
-      <div className="w-full p-3">
-        {
-          users ? users.map((elem,ind) => (
-            <div className="w-full bg-white p-2 px-0 flex items-center gap-3">
-          <div className="h-12 w-12 bg-amber-400 rounded-full">
-            <img src={elem.photo ? elem.photo : ""} alt="" />
-          </div>
-          <div className="flex flex-col">
-            <h1 className="font-bold text-xl">{elem.name}</h1>
-            <p className="-mt-1 w-1/2 overflow-hidden">{elem.email}</p>
-          </div>
-          <button className="bg-red-400 text-white p-1 px-3 rounded-full">Follow</button>
-        </div>
-          )) : "No users found"
-        }
+      <div className="py-4">
+        {users.length > 0 ? (
+          users.map((item) => (
+            <div
+              key={item.email}
+              className="flex flex-col gap-4 border-b-2 border-dashed border-slate-300 py-4 md:flex-row md:items-center md:justify-between"
+            >
+              <div className="flex items-center gap-4">
+                <img
+                  src={item.photo || "/like.png"}
+                  alt={item.name}
+                  className="h-14 w-14 rounded-full object-cover"
+                />
+                <div className="min-w-0">
+                  <h2 className="truncate text-xl font-bold text-black">{item.name}</h2>
+                  <p className="truncate text-sm text-slate-500">{item.email}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenChat?.(item)}
+                className="bg-black px-5 py-2 text-sm font-bold text-white transition hover:bg-slate-700"
+              >
+                Message
+              </button>
+            </div>
+          ))
+        ) : (
+          <div className="py-10 text-center text-slate-500">No users found yet.</div>
+        )}
       </div>
     </div>
   );

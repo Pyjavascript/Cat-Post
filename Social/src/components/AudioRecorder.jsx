@@ -1,68 +1,96 @@
-import { ReactMic } from "react-mic";
-import { useState, useEffect } from "react";
-import { monitorAuthState } from "../firebase/index";
-import { v4 as uuidv4 } from "uuid";
+import { useEffect, useRef, useState } from "react";
 
-function AudioRecorder() {
-  const [user, setUser] = useState(null);
-  const [record, setRecord] = useState(false);
+function AudioRecorder({ onRecorded, disabled = false }) {
+  const [isRecording, setIsRecording] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [error, setError] = useState("");
+  const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const chunksRef = useRef([]);
 
   useEffect(() => {
-    monitorAuthState((currentUser) => {
-      setUser(currentUser);
-      console.log("User:", currentUser);
-    });
-  }, []);
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
 
-  const onStop = async (recordedBlob) => {
-    console.log("Recorded Blob:", recordedBlob);
-    
-    const audioFile = new File([recordedBlob.blob], "voiceMessage.webm", {
-      type: "audio/webm",
-    });
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [previewUrl]);
 
-    if (!user) {
-      console.error("User is not authenticated");
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const handleToggleRecording = async () => {
+    if (disabled) {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("audio", audioFile); // ✅ Must match `multer.single("audio")` in the backend
-    formData.append("text", ""); // Placeholder for now
-    formData.append("img", ""); // Placeholder
-    formData.append("userId", user.uid);
-    formData.append("postId", uuidv4());
-    formData.append("user", user.email);
+    if (isRecording && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
 
     try {
-      const response = await fetch("http://localhost:5000/post", {
-        method: "POST",
-        body: formData, // ✅ Send FormData instead of JSON
-      });
+      setError("");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
 
-      if (response.ok) {
-        console.log("✅ Post saved successfully!");
-      } else {
-        console.error("❌ Failed to save post to backend");
-      }
-    } catch (error) {
-      console.error("❌ Error posting data:", error);
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const nextPreviewUrl = URL.createObjectURL(audioBlob);
+
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+        }
+
+        setPreviewUrl(nextPreviewUrl);
+        onRecorded?.(audioBlob);
+        stopStream();
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (mediaError) {
+      console.error("Audio recording failed:", mediaError);
+      setError("Microphone permission was blocked.");
+      stopStream();
     }
   };
 
   return (
-    <div>
-      <div className="hidden">
-        <ReactMic record={record} onStop={onStop} mimeType="audio/webm" />
-      </div>
-      <div>
-        <button
-          onClick={() => setRecord((prev) => !prev)}
-          className="flex justify-center items-center w-7"
-        >
-          {record ? <img src="./mute.png" alt="Stop Recording" /> : <img src="./mic.png" alt="Start Recording" />}
-        </button>
-      </div>
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={handleToggleRecording}
+        disabled={disabled}
+        className={`border px-4 py-2 text-sm font-semibold transition ${
+          isRecording
+            ? "border-black bg-black text-white"
+            : "border-dashed border-slate-300 bg-white text-slate-700 hover:border-black"
+        } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+      >
+        {isRecording ? "Stop Mic" : "Record Audio"}
+      </button>
+      {previewUrl ? <audio controls src={previewUrl} className="w-full" /> : null}
+      {error ? <p className="text-sm text-rose-500">{error}</p> : null}
     </div>
   );
 }

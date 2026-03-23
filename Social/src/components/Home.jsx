@@ -1,72 +1,98 @@
 import { useState } from "react";
-import { Posts, Chat, Users, Account } from "../index";
-import {logout} from "../firebase/index"
 import { useNavigate } from "react-router-dom";
+import { Account, Chat, Posts, Users } from "../index";
+import { logout } from "../firebase/index";
 
 function Home() {
-  const [page, SetPage] = useState("");
+  const [page, setPage] = useState("post");
+  const [selectedChatUser, setSelectedChatUser] = useState(null);
   const navigate = useNavigate();
+  const navItems = [
+    { id: "post", label: "Posts", shortLabel: "Feed" },
+    { id: "chat", label: "Chat", shortLabel: "Chat" },
+    { id: "users", label: "Users", shortLabel: "Users" },
+    { id: "account", label: "Account", shortLabel: "Profile" },
+  ];
 
-  const handlelout = () => {
+  const handleLogout = () => {
     logout();
-    navigate("/register")
-  }
+    navigate("/register");
+  };
+
   return (
-    <>
-      <div className="mainpage w-screen h-screen md:p-5 md:px-96 overflow-x-hidden">
-        <div className="w-full border-b-2 border-gray-300 border-dashed">
-          <div className="flex md:flex-row flex-col justify-between w-full p-1">
-            <div className="w-full flex justify-between items-center px-2">
-              <img src="/like.png" className="w-10" alt="" />
-              <button onClick={handlelout} className="bg-red-400 text-white font-bold p-1 px-3 rounded-full cursor-pointer hover:bg-black transition-all">Logout</button>
+    <div className="mainpage dashboard-shell min-h-screen w-screen overflow-x-hidden">
+      <div className="mx-auto w-full max-w-6xl px-4 py-4 md:px-6">
+        <div className="dashboard-topbar">
+          <div className="flex flex-col justify-between gap-4 p-3 md:flex-row md:items-center">
+            <div className="flex w-full items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="dashboard-brand-icon">
+                  <img src="/like.png" className="w-8" alt="" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-slate-500">
+                    Cat Post
+                  </p>
+                  <h1 className="text-2xl font-extrabold text-black">Dashboard</h1>
+                </div>
+              </div>
+              <button onClick={handleLogout} className="dashboard-logout">
+                Logout
+              </button>
             </div>
-            <div className="flex gap-3">
-              <h1
-                className="cursor-pointer hover:text-[1.2rem] transition-all hover:border-b-2 p-2 flex justify-center items-center"
-                onClick={() => SetPage("post")}
-              >
-                Posts
-              </h1>
-              <h1
-                className="cursor-pointer hover:text-[1.2rem] transition-all hover:border-b-2 p-2 flex justify-center items-center"
-                onClick={() => SetPage("chat")}
-              >
-                Chat
-              </h1>
-              <h1
-                className="cursor-pointer hover:text-[1.2rem] transition-all hover:border-b-2 p-2 flex justify-center items-center"
-                onClick={() => SetPage("Users")}
-              >
-                Users
-              </h1>
-              <h1
-                className="cursor-pointer hover:text-[1.2rem] transition-all hover:border-b-2 p-2 flex justify-center items-center"
-                onClick={() => SetPage("account")}
-              >
-                Account
-              </h1>
+            <div className="hidden flex-wrap gap-2 md:flex">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`dashboard-tab ${page === item.id ? "dashboard-tab-active" : ""}`}
+                  onClick={() => setPage(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
-        {/* pages */}
-        <div className="w-full h-full">
-          {(() => {
-            switch (page) {
-              case "post":
-                return <Posts />;
-              case "chat":
-                return <Chat />;
-              case "Users":
-                return <Users />;
-              case "account":
-                return <Account />;
-              default:
-                return <Posts />; // Default page (optional)
-            }
-          })()}
+
+        <div className="mt-4 w-full pb-28 md:pb-0">
+          {page === "post" ? <Posts /> : null}
+          {page === "chat" ? (
+            <Chat
+              selectedChatUser={selectedChatUser}
+              onSelectUser={setSelectedChatUser}
+            />
+          ) : null}
+          {page === "users" ? (
+            <Users
+              onOpenChat={(nextUser) => {
+                setSelectedChatUser(nextUser);
+                setPage("chat");
+              }}
+            />
+          ) : null}
+          {page === "account" ? <Account /> : null}
         </div>
       </div>
-    </>
+
+      <nav className="mobile-bottom-nav md:hidden">
+        <div className="mobile-bottom-nav-inner">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`mobile-bottom-nav-item ${
+                page === item.id ? "mobile-bottom-nav-item-active" : ""
+              }`}
+              onClick={() => setPage(item.id)}
+            >
+              <span className="mobile-bottom-nav-pill" />
+              <span>{item.shortLabel}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+    </div>
   );
 }
 

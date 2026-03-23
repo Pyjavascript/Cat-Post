@@ -1,201 +1,405 @@
-import { useState, useEffect } from "react";
-import { monitorAuthState } from "../firebase/index";
-import { v4 as uuidv4 } from "uuid";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import AudioRecorder from './AudioRecorder'
+import { v4 as uuidv4 } from "uuid";
+import AudioRecorder from "./AudioRecorder";
+import { monitorAuthState } from "../firebase/index";
+import { IMGBB_API_KEY, buildApiUrl, resolveMediaUrl } from "../api";
 
 function Posts() {
   const [user, setUser] = useState(null);
   const [text, setText] = useState("");
   const [imgURL, setImgURL] = useState("");
+  const [imageFileName, setImageFileName] = useState("");
+  const [videoURL, setVideoURL] = useState("");
+  const [audioBlob, setAudioBlob] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [post, setPost] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+  const [status, setStatus] = useState("");
+  const [animatedLikePostId, setAnimatedLikePostId] = useState("");
 
-  // Monitor user authentication state
   useEffect(() => {
-    monitorAuthState((currentUser) => {
+    const unsubscribe = monitorAuthState((currentUser) => {
       setUser(currentUser);
-      // console.log("User:", currentUser);
     });
 
-    const cachedPosts = JSON.parse(localStorage.getItem("posts"));
-    if (cachedPosts) {
-      setPost(cachedPosts);
-    }
+    return unsubscribe;
   }, []);
 
-  // Fetch posts when user is available
   useEffect(() => {
     if (user) {
       fetchPosts();
     }
   }, [user]);
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    alert("Uploading image...");
-    const formData = new FormData();
-    formData.set("image", file);
-
-    try {
-      const response = await axios.post(
-        `https://api.imgbb.com/1/upload?key=98257fe3ec3403ba357fa7640e88fb49`,
-        formData
-      );
-      const imageUrl = response.data.data.display_url;
-      setImgURL(imageUrl);
-      console.log("Image uploaded successfully:", imageUrl);
-      alert("Image uploaded successfully");
-    } catch (error) {
-      console.error("Image upload failed:", error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `http://localhost:5000/posts?user=${user?.email}`,
-        {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      const response = await fetch(buildApiUrl("/posts"));
 
       if (!response.ok) {
         throw new Error("Failed to fetch posts");
       }
 
       const data = await response.json();
-      setPost(data);
+      setPosts(data);
     } catch (error) {
       console.error("Error fetching posts:", error);
+      setStatus("Could not load the feed right now.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePost = async () => {
-    if (!user) {
-      console.error("User not authenticated");
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) {
       return;
     }
 
-    const newPost = {
-      text: text,
-      img: imgURL,
-      // audio:"",
-      userId: user.uid,
-      postId: uuidv4(),
-      user: user.email,
-    };
+    setImageFileName(file.name);
+    setIsUploading(true);
+    setStatus("Uploading image...");
+
+    const formData = new FormData();
+    formData.set("image", file);
 
     try {
-      const response = await fetch("http://localhost:5000/post", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newPost),
-      });
-
-      if (response.ok) {
-        console.log("Post saved to backend");
-        setText("");
-        setImgURL("");
-        fetchPosts();
-      } else {
-        console.error("Failed to save post to backend");
-      }
+      const response = await axios.post(
+        `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,
+        formData
+      );
+      setImgURL(response.data.data.display_url);
+      setStatus("Image uploaded successfully.");
     } catch (error) {
-      console.error("Error posting data:", error);
+      console.error("Image upload failed:", error);
+      setStatus("Image upload failed. Please try again.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  return (
-    <div className="h-full w-full bg-white">
-      {/* Create Post Section */}
-      <div className="w-full bg-white flex gap-2 p-3 border-b-2 border-dashed border-slate-300">
-        <div className="flex justify-center items-center overflow-hidden h-10 w-10 bg-slate-300 rounded-full">
-          <img
-            src={user?.photoURL ? user.photoURL : "src/assets/like.png"}
-            alt="img"
-            className="h-full"
-            onError={(e) => (e.target.src = "/like.png")}
-          />
-        </div>
-        <div className="w-[63%] flex flex-col gap-2">
-          <input
-            type="text"
-            className="text-[1.2rem] outline-none p-1"
-            placeholder="Create a post"
-            onChange={(e) => setText(e.target.value)}
-            value={text}
-          />
-          <div className="text-2xl flex gap-2">
-            <label htmlFor="file">
-              {/* {isUploading ? (
-                <div className="text-blue-500 animate-pulse">
-                  <ion-icon name="image-outline"></ion-icon>
-                </div>
-              ) : (
-                <ion-icon name="image-outline"></ion-icon>
-              )} */}
-              <div className="w-7">
-              <img src="./uploadImg.png" alt="" />
-              </div>
-            </label>
-            <input type="file" id="file" hidden onChange={handleImageUpload} />
-            <AudioRecorder/>
-          </div>
-          {/* here */}
-          
-        </div>
-        <div className="flex items-end md:ml-30">
-          <button
-            onClick={handlePost}
-            className="bg-black text-white p-1 px-3 rounded-2xl text-[.8rem] cursor-pointer"
-          >
-            Post
-          </button>
-        </div>
-      </div>
+  const handlePost = async () => {
+    if (!user) {
+      return;
+    }
 
-      {/* Posts Display Section */}
-      <div className="flex flex-col">
-        {loading ? (
-          <div className="h-[50vh] w-screen flex justify-center items-center">
-            <p>Loading posts...</p>
-          </div>
-        ) : post.length > 0 ? (
-          post.map((elem, ind) => (
-            <div key={ind}>
-              <div className="w-full p-3 px-4 flex justify-normal items-center gap-2">
-                <div className="w-8 h-8 bg-slate-300 rounded-full overflow-hidden">
-                  <img src={user?.photoURL ? user.photoURL : "/like.png"} alt="" />
-                </div>
-                <p className="font-bold"> {user?.displayName ? user.displayName : "Cat"}</p>
+    if (!text.trim() && !imgURL && !videoURL.trim() && !audioBlob) {
+      setStatus("Add some text, image, video, or audio before posting.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("text", text.trim());
+    formData.append("img", imgURL);
+    formData.append("video", videoURL.trim());
+    formData.append("userId", user.uid);
+    formData.append("postId", uuidv4());
+    formData.append("user", user.email);
+    formData.append("userName", user.displayName || "Cat User");
+    formData.append("userPhoto", user.photoURL || "");
+
+    if (audioBlob) {
+      formData.append(
+        "audio",
+        new File([audioBlob], "voice-message.webm", { type: "audio/webm" })
+      );
+    }
+
+    try {
+      setPosting(true);
+      setStatus("Publishing post...");
+      const response = await fetch(buildApiUrl("/post"), {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Post failed");
+      }
+
+      setText("");
+      setImgURL("");
+      setImageFileName("");
+      setVideoURL("");
+      setAudioBlob(null);
+      setStatus("Post published.");
+      await fetchPosts();
+    } catch (error) {
+      console.error("Error posting data:", error);
+      setStatus(error.message || "Posting failed.");
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const handleLike = async (postId) => {
+    if (!user?.email) {
+      return;
+    }
+
+    try {
+      setAnimatedLikePostId(postId);
+      const response = await fetch(buildApiUrl(`/posts/${postId}/like`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userEmail: user.email }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to like post");
+      }
+
+      const data = await response.json();
+      setPosts((currentPosts) =>
+        currentPosts.map((post) => (post.postId === postId ? data.data : post))
+      );
+    } catch (error) {
+      console.error("Error liking post:", error);
+      setStatus("Could not update like right now.");
+    } finally {
+      window.setTimeout(() => {
+        setAnimatedLikePostId((currentId) => (currentId === postId ? "" : currentId));
+      }, 400);
+    }
+  };
+
+  const formatPostTime = (value) => {
+    if (!value) {
+      return "Just now";
+    }
+
+    const parsedDate = new Date(value);
+    return Number.isNaN(parsedDate.getTime())
+      ? "Just now"
+      : parsedDate.toLocaleString();
+  };
+
+  const renderPostMedia = (item) => {
+    if (item.img) {
+      return (
+        <img
+          src={resolveMediaUrl(item.img)}
+          alt="Post"
+          className="feed-media"
+        />
+      );
+    }
+
+    if (item.video) {
+      return (
+        <video
+          controls
+          className="feed-media bg-black"
+          src={resolveMediaUrl(item.video)}
+        />
+      );
+    }
+
+    if (item.audioFile) {
+      return <audio controls src={resolveMediaUrl(item.audioFile)} className="w-full" />;
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="dashboard-feed">
+      <div className="feed-layout">
+        <section className="feed-main">
+          <div className="composer-card">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+                  Feed
+                </p>
+                <h2 className="text-3xl font-extrabold text-black">Posts</h2>
               </div>
-              <div
-                key={ind}
-                className="border-b-2 border-dashed border-slate-300"
-              >
-                {elem.File && (
-                  <img src={elem.File} alt="Post" className="w-full md:w-1/2" />
-                )}
-                <p className="pl-4 py-2"><span className="font-bold">Post:</span> {elem.text}</p>
+              <p className="composer-meta">{posts.length} posts</p>
+            </div>
+
+            <div className="flex gap-3">
+              <div className="h-12 w-12 overflow-hidden rounded-full bg-slate-200">
+                <img
+                  src={user?.photoURL || "/like.png"}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <textarea
+                  className="composer-textarea"
+                  placeholder="What's happening in your community?"
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                />
+
+                <div className="mt-4 grid gap-3 md:grid-cols-[1.1fr_1fr]">
+                  <label className="upload-control">
+                    <div className="upload-control-left">
+                      <div className="upload-icon-wrap">
+                        <img src="/uploadImg.png" alt="" className="h-5 w-5 object-contain" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-800">
+                          {isUploading ? "Uploading image..." : "Choose file"}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {imageFileName || "Select an image for your post"}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="upload-chip">Browse</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                  <input
+                    type="url"
+                    className="simple-input px-4 py-3 text-sm"
+                    placeholder="Paste video URL"
+                    value={videoURL}
+                    onChange={(event) => setVideoURL(event.target.value)}
+                  />
+                </div>
+
+                <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                  <div className="md:w-[55%]">
+                    <AudioRecorder onRecorded={setAudioBlob} disabled={posting} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handlePost}
+                    disabled={posting || isUploading}
+                    className="publish-button"
+                  >
+                    {posting ? "Posting..." : "Post"}
+                  </button>
+                </div>
+
+                {imgURL ? (
+                  <div className="preview-card">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
+                      Image Preview
+                    </p>
+                    <img src={imgURL} alt="Preview" className="preview-image" />
+                  </div>
+                ) : null}
+
+                {status ? <p className="mt-3 text-sm text-slate-500">{status}</p> : null}
               </div>
             </div>
-          ))
-        ) : (
-          <div className="h-[50vh] md:w-full w-screen flex justify-center items-center">
-            <p>No post availiable</p>
           </div>
-        )}
+
+          <div className="mt-5 flex flex-col gap-5">
+            {loading ? (
+              <div className="feed-empty">Loading posts...</div>
+            ) : posts.length > 0 ? (
+              posts.map((item) => {
+                const likedByCurrentUser = item.likes?.includes(user?.email || "");
+
+                return (
+                  <article key={item.postId} className="feed-card">
+                    <div className="flex items-center gap-3 px-4 py-4">
+                      <div className="h-11 w-11 overflow-hidden rounded-full bg-slate-200">
+                        <img
+                          src={item.authorPhoto || "/like.png"}
+                          alt={item.authorName || "Author"}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-black">{item.authorName || "Cat User"}</p>
+                        <p className="text-sm text-slate-500">{item.user}</p>
+                      </div>
+                      <p className="text-xs text-slate-400">{formatPostTime(item.createdAt)}</p>
+                    </div>
+
+                    <div className="space-y-4 px-4 pb-5">
+                      {item.text ? (
+                        <p className="text-base leading-7 text-slate-700">{item.text}</p>
+                      ) : null}
+
+                      {renderPostMedia(item)}
+
+                      <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => handleLike(item.postId)}
+                          className={`post-heart ${likedByCurrentUser ? "post-heart-active" : ""} ${
+                            animatedLikePostId === item.postId ? "like-burst" : ""
+                          }`}
+                        >
+                          <span>{likedByCurrentUser ? "Liked" : "Like"}</span>
+                          <span>{item.likes?.length || 0}</span>
+                        </button>
+                        <p className="text-sm text-slate-400">
+                          {item.audioFile ? "Audio" : item.video ? "Video" : item.img ? "Image" : "Text"}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="feed-empty">
+                <p className="text-xl font-bold text-slate-800">No posts available</p>
+                <p className="max-w-md text-sm text-slate-500">
+                  Start with a text post, image, video, or voice note.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <aside className="feed-sidebar">
+          <div className="sidebar-card">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+              Your Space
+            </p>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="h-14 w-14 overflow-hidden rounded-full bg-slate-200">
+                <img
+                  src={user?.photoURL || "/like.png"}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate font-bold text-black">{user?.displayName || "Cat User"}</p>
+                <p className="truncate text-sm text-slate-500">{user?.email || "Loading..."}</p>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="sidebar-stat">
+                <span className="sidebar-stat-value">{posts.length}</span>
+                <span className="sidebar-stat-label">Posts</span>
+              </div>
+              <div className="sidebar-stat">
+                <span className="sidebar-stat-value">
+                  {posts.reduce((count, item) => count + (item.likes?.length || 0), 0)}
+                </span>
+                <span className="sidebar-stat-label">Likes</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sidebar-card">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+              Posting Tips
+            </p>
+            <ul className="mt-4 space-y-3 text-sm text-slate-600">
+              <li>Lead with a strong visual to make the feed pop.</li>
+              <li>Keep captions short so the dashboard stays clean.</li>
+              <li>Use a voice note when you want the post to feel personal.</li>
+            </ul>
+          </div>
+        </aside>
       </div>
     </div>
   );
