@@ -97,12 +97,12 @@ function Register() {
 
   return (
     <main className="flex h-screen w-screen items-center justify-center bg-white">
-      <div className="hidden h-screen w-1/2 flex-col justify-center bg-slate-100 p-10 md:flex">
+      <div className="hidden h-screen w-1/2 flex-col justify-center items-center bg-slate-100 p-10 md:flex">
         <div className="flex items-center gap-6">
           <div className="w-24">
             <img src="/like.png" className="w-full" alt="" />
           </div>
-          <h1 className="text-8xl font-extrabold leading-none text-black">Post</h1>
+          <h1 className="text-8xl font-bold leading-none text-black">Post</h1>
         </div>
         <p className="mt-8 max-w-lg text-lg leading-8 text-slate-500">
           Share posts, chat with friends, and keep your community active.
@@ -114,7 +114,7 @@ function Register() {
           <img src="/like.png" className="w-10" alt="" />
         </div>
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-black text-black">
+          <h1 className="text-3xl font-bold text-black">
             {!login ? "Create an account" : "Login to your account"}
           </h1>
           <p className="text-slate-400">

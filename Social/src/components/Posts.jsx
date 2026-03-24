@@ -1,9 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import AudioRecorder from "./AudioRecorder";
+import IonIcon from "./IonIcon";
 import { monitorAuthState } from "../firebase/index";
 import { IMGBB_API_KEY, buildApiUrl, resolveMediaUrl } from "../api";
+
+const composerActions = [
+  { label: "Go Live", icon: "videocam-outline", tone: "text-orange-400" },
+  { label: "Photo", icon: "image-outline", tone: "text-emerald-500" },
+  { label: "Video", icon: "logo-youtube", tone: "text-pink-500" },
+  { label: "Feeling", icon: "happy-outline", tone: "text-sky-500" },
+];
+
+const birthdays = [
+  "Pola Foster",
+  "Annalise Hane",
+  "Alex Kai",
+];
 
 function Posts() {
   const [user, setUser] = useState(null);
@@ -18,6 +32,8 @@ function Posts() {
   const [posting, setPosting] = useState(false);
   const [status, setStatus] = useState("");
   const [animatedLikePostId, setAnimatedLikePostId] = useState("");
+  const [savedPostIds, setSavedPostIds] = useState([]);
+  const [copiedPostId, setCopiedPostId] = useState("");
 
   useEffect(() => {
     const unsubscribe = monitorAuthState((currentUser) => {
@@ -43,7 +59,12 @@ function Posts() {
       }
 
       const data = await response.json();
-      setPosts(data);
+      const sortedPosts = [...data].sort((left, right) => {
+        const leftTime = new Date(left.createdAt || 0).getTime();
+        const rightTime = new Date(right.createdAt || 0).getTime();
+        return rightTime - leftTime;
+      });
+      setPosts(sortedPosts);
     } catch (error) {
       console.error("Error fetching posts:", error);
       setStatus("Could not load the feed right now.");
@@ -166,6 +187,31 @@ function Posts() {
     }
   };
 
+  const handleShare = async (item) => {
+    const shareText = `${item.authorName || "Cat User"} on CatPost: ${item.text || "New post"}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "CatPost", text: shareText });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+      }
+
+      setCopiedPostId(item.postId);
+      window.setTimeout(() => {
+        setCopiedPostId((currentId) => (currentId === item.postId ? "" : currentId));
+      }, 1800);
+    } catch (error) {
+      console.error("Error sharing post:", error);
+    }
+  };
+
+  const handleToggleSave = (postId) => {
+    setSavedPostIds((current) =>
+      current.includes(postId) ? current.filter((id) => id !== postId) : [...current, postId]
+    );
+  };
+
   const formatPostTime = (value) => {
     if (!value) {
       return "Just now";
@@ -174,7 +220,12 @@ function Posts() {
     const parsedDate = new Date(value);
     return Number.isNaN(parsedDate.getTime())
       ? "Just now"
-      : parsedDate.toLocaleString();
+      : parsedDate.toLocaleString([], {
+          hour: "numeric",
+          minute: "2-digit",
+          month: "short",
+          day: "numeric",
+        });
   };
 
   const renderPostMedia = (item) => {
@@ -183,7 +234,7 @@ function Posts() {
         <img
           src={resolveMediaUrl(item.img)}
           alt="Post"
-          className="feed-media"
+          className="max-h-[26rem] w-full rounded-xl object-cover"
         />
       );
     }
@@ -192,7 +243,7 @@ function Posts() {
       return (
         <video
           controls
-          className="feed-media bg-black"
+          className="max-h-[26rem] w-full rounded-xl bg-black object-cover"
           src={resolveMediaUrl(item.video)}
         />
       );
@@ -205,202 +256,328 @@ function Posts() {
     return null;
   };
 
+  const featuredCreators = useMemo(() => {
+    const creators = [];
+
+    posts.forEach((item) => {
+      if (
+        item.user &&
+        !creators.some((creator) => creator.email === item.user) &&
+        creators.length < 8
+      ) {
+        creators.push({
+          email: item.user,
+          name: item.authorName || "Cat User",
+          photo: item.authorPhoto || "/like.png",
+        });
+      }
+    });
+
+    return creators;
+  }, [posts]);
+
+  const latestActivity = useMemo(
+    () =>
+      posts.slice(0, 3).map((item) => ({
+        id: item.postId,
+        photo: item.authorPhoto || "/like.png",
+        title: `${item.authorName || "Cat User"} added a ${item.img ? "photo" : item.video ? "video" : item.audioFile ? "voice note" : "post"}`,
+        time: formatPostTime(item.createdAt),
+      })),
+    [posts]
+  );
+
   return (
-    <div className="dashboard-feed">
-      <div className="feed-layout">
-        <section className="feed-main">
-          <div className="composer-card">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-                  Feed
-                </p>
-                <h2 className="text-3xl font-extrabold text-black">Posts</h2>
-              </div>
-              <p className="composer-meta">{posts.length} posts</p>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="h-12 w-12 overflow-hidden rounded-full bg-slate-200">
-                <img
-                  src={user?.photoURL || "/like.png"}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="flex-1">
-                <textarea
-                  className="composer-textarea"
-                  placeholder="What's happening in your community?"
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                />
-
-                <div className="mt-4 grid gap-3 md:grid-cols-[1.1fr_1fr]">
-                  <label className="upload-control">
-                    <div className="upload-control-left">
-                      <div className="upload-icon-wrap">
-                        <img src="/uploadImg.png" alt="" className="h-5 w-5 object-contain" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-800">
-                          {isUploading ? "Uploading image..." : "Choose file"}
-                        </p>
-                        <p className="truncate text-xs text-slate-500">
-                          {imageFileName || "Select an image for your post"}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="upload-chip">Browse</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                  </label>
-                  <input
-                    type="url"
-                    className="simple-input px-4 py-3 text-sm"
-                    placeholder="Paste video URL"
-                    value={videoURL}
-                    onChange={(event) => setVideoURL(event.target.value)}
-                  />
-                </div>
-
-                <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                  <div className="md:w-[55%]">
-                    <AudioRecorder onRecorded={setAudioBlob} disabled={posting} />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handlePost}
-                    disabled={posting || isUploading}
-                    className="publish-button"
-                  >
-                    {posting ? "Posting..." : "Post"}
-                  </button>
-                </div>
-
-                {imgURL ? (
-                  <div className="preview-card">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">
-                      Image Preview
-                    </p>
-                    <img src={imgURL} alt="Preview" className="preview-image" />
-                  </div>
-                ) : null}
-
-                {status ? <p className="mt-3 text-sm text-slate-500">{status}</p> : null}
-              </div>
-            </div>
+    <div className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_15rem]">
+      <section className="min-w-0 space-y-2">
+        <div className="rounded-[1.5rem] border border-white/80 bg-white/95 p-4 shadow-[0_20px_55px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center gap-3">
+            <img
+              src={user?.photoURL || "/like.png"}
+              alt={user?.displayName || "Profile"}
+              className="h-11 w-11 rounded-full object-cover"
+            />
+            <textarea
+              className="min-h-[3.25rem] flex-1 resize-none rounded-full bg-slate-100 px-4 py-3 text-sm text-slate-700 outline-none placeholder:text-slate-400"
+              placeholder="What on your mind?"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+            />
           </div>
 
-          <div className="mt-5 flex flex-col gap-5">
-            {loading ? (
-              <div className="feed-empty">Loading posts...</div>
-            ) : posts.length > 0 ? (
-              posts.map((item) => {
-                const likedByCurrentUser = item.likes?.includes(user?.email || "");
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {composerActions.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  <IonIcon name={action.icon} className={`text-lg ${action.tone}`} />
+                  <span>{action.label}</span>
+                </button>
+              ))}
+            </div>
 
-                return (
-                  <article key={item.postId} className="feed-card">
-                    <div className="flex items-center gap-3 px-4 py-4">
-                      <div className="h-11 w-11 overflow-hidden rounded-full bg-slate-200">
-                        <img
-                          src={item.authorPhoto || "/like.png"}
-                          alt={item.authorName || "Author"}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-black">{item.authorName || "Cat User"}</p>
-                        <p className="text-sm text-slate-500">{item.user}</p>
-                      </div>
-                      <p className="text-xs text-slate-400">{formatPostTime(item.createdAt)}</p>
-                    </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                    <IonIcon name="image-outline" className="text-lg" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-slate-900">
+                      {isUploading ? "Uploading image..." : imageFileName || "Choose photo"}
+                    </p>
+                    <p className="text-xs text-slate-500">Attach an image</p>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">
+                  Browse
+                </span>
+              </label>
 
-                    <div className="space-y-4 px-4 pb-5">
-                      {item.text ? (
-                        <p className="text-base leading-7 text-slate-700">{item.text}</p>
-                      ) : null}
+              <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-slate-400">
+                <IonIcon name="link-outline" className="text-lg" />
+                <input
+                  type="url"
+                  value={videoURL}
+                  onChange={(event) => setVideoURL(event.target.value)}
+                  placeholder="Paste video URL"
+                  className="w-full border-0 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
+                />
+              </label>
+            </div>
 
-                      {renderPostMedia(item)}
+            <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <AudioRecorder onRecorded={setAudioBlob} disabled={posting || isUploading} />
 
-                      <div className="flex items-center justify-between border-t border-slate-100 pt-4">
-                        <button
-                          type="button"
-                          onClick={() => handleLike(item.postId)}
-                          className={`post-heart ${likedByCurrentUser ? "post-heart-active" : ""} ${
-                            animatedLikePostId === item.postId ? "like-burst" : ""
-                          }`}
-                        >
-                          <span>{likedByCurrentUser ? "Liked" : "Like"}</span>
-                          <span>{item.likes?.length || 0}</span>
-                        </button>
-                        <p className="text-sm text-slate-400">
-                          {item.audioFile ? "Audio" : item.video ? "Video" : item.img ? "Image" : "Text"}
-                        </p>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })
-            ) : (
-              <div className="feed-empty">
-                <p className="text-xl font-bold text-slate-800">No posts available</p>
-                <p className="max-w-md text-sm text-slate-500">
-                  Start with a text post, image, video, or voice note.
-                </p>
+              <button
+                type="button"
+                onClick={handlePost}
+                disabled={posting || isUploading}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1d235c] px-5 py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <IonIcon name="paper-plane-outline" className="text-base" />
+                {posting ? "Posting..." : "Publish"}
+              </button>
+            </div>
+
+            {imgURL ? (
+              <div className="mt-3 rounded-xl bg-slate-50 p-3">
+                <img src={imgURL} alt="Preview" className="max-h-52 w-full rounded-xl object-cover" />
               </div>
+            ) : null}
+
+            {status ? <p className="mt-3 text-sm text-slate-500">{status}</p> : null}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {loading ? (
+            <div className="rounded-[1.5rem] border border-white/80 bg-white/95 p-8 text-center text-slate-500 shadow-[0_20px_55px_rgba(15,23,42,0.08)]">
+              Loading posts...
+            </div>
+          ) : posts.length > 0 ? (
+            posts.map((item) => {
+              const likedByCurrentUser = item.likes?.includes(user?.email || "");
+              const isSaved = savedPostIds.includes(item.postId);
+
+              return (
+                <article
+                  key={item.postId}
+                  className="rounded-[1.5rem] border border-white/80 bg-white/95 p-4 shadow-[0_20px_55px_rgba(15,23,42,0.08)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={item.authorPhoto || "/like.png"}
+                        alt={item.authorName || "Author"}
+                        className="h-11 w-11 rounded-full object-cover"
+                      />
+                      <div>
+                        <p className="text-lg font-bold text-slate-900">
+                          {item.authorName || "Cat User"}
+                        </p>
+                        <p className="text-xs text-slate-500">{formatPostTime(item.createdAt)}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100"
+                    >
+                      <IonIcon name="ellipsis-vertical" className="text-base" />
+                    </button>
+                  </div>
+
+                  {item.text ? (
+                    <p className="mt-3 text-sm leading-6 text-slate-700">{item.text}</p>
+                  ) : null}
+
+                  <div className="mt-3">{renderPostMedia(item)}</div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                    <span className="inline-flex items-center gap-2">
+                      <IonIcon name="heart" className="text-base text-rose-500" />
+                      {item.likes?.length || 0}
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <IonIcon name="chatbubble" className="text-base text-sky-500" />
+                      200
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <IonIcon name="share-social-outline" className="text-base text-amber-500" />
+                      17
+                    </span>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => handleLike(item.postId)}
+                      className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+                        likedByCurrentUser
+                          ? "bg-gradient-to-r from-rose-500 to-pink-500 text-white"
+                          : "bg-rose-50 text-rose-500 hover:bg-rose-100"
+                      } ${animatedLikePostId === item.postId ? "like-burst" : ""}`}
+                    >
+                      <IonIcon
+                        name={likedByCurrentUser ? "heart" : "heart-outline"}
+                        className="text-base"
+                      />
+                      <span>{likedByCurrentUser ? "Liked" : "Like"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleShare(item)}
+                      className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-200"
+                    >
+                      <IonIcon name="share-social-outline" className="text-base" />
+                      Share
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSave(item.postId)}
+                      className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+                        isSaved
+                          ? "bg-sky-100 text-sky-600"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      <IonIcon
+                        name={isSaved ? "bookmark" : "bookmark-outline"}
+                        className="text-base"
+                      />
+                      {isSaved ? "Saved" : "Save"}
+                    </button>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-3 border-t border-slate-100 pt-3">
+                    <img
+                      src={user?.photoURL || "/like.png"}
+                      alt={user?.displayName || "Profile"}
+                      className="h-9 w-9 rounded-full object-cover"
+                    />
+                    <div className="flex flex-1 items-center justify-between rounded-full bg-slate-100 px-4 py-2">
+                      <span className="text-sm text-slate-400">Write your comment</span>
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <IonIcon name="camera-outline" className="text-base" />
+                        <IonIcon name="happy-outline" className="text-base" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">
+                      {item.authorName || "Cat User"}
+                    </span>{" "}
+                    shared an update with the community.
+                    {copiedPostId === item.postId ? " Copied for sharing." : ""}
+                  </div>
+                </article>
+              );
+            })
+          ) : (
+            <div className="rounded-[1.5rem] border border-white/80 bg-white/95 p-8 text-center shadow-[0_20px_55px_rgba(15,23,42,0.08)]">
+              <p className="text-lg font-bold text-slate-900">No posts available</p>
+              <p className="mt-2 text-sm text-slate-500">
+                Start with a text post, image, video, or voice note.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <aside className="space-y-2">
+        <div className="rounded-[1.5rem] border border-white/80 bg-white/95 p-4 shadow-[0_20px_55px_rgba(15,23,42,0.08)]">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-[#1d235c]">Birthdays 🎂</p>
+              <p className="mt-1 text-sm text-slate-600">
+                {birthdays[0]} and 3 other friends have birthday today
+              </p>
+            </div>
+            <button type="button" className="text-slate-400">
+              <IonIcon name="close-outline" className="text-base" />
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-white/80 bg-white/95 p-4 shadow-[0_20px_55px_rgba(15,23,42,0.08)]">
+          <p className="text-sm font-bold text-[#1d235c]">Latest Activity</p>
+          <div className="mt-4 space-y-3">
+            {latestActivity.length > 0 ? (
+              latestActivity.map((activity) => (
+                <div key={activity.id} className="flex gap-3">
+                  <img
+                    src={activity.photo}
+                    alt={activity.title}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm text-slate-700">{activity.title}</p>
+                    <p className="text-xs text-slate-400">{activity.time}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">Activity will show up here once the feed is active.</p>
             )}
           </div>
-        </section>
+        </div>
 
-        <aside className="feed-sidebar">
-          <div className="sidebar-card">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-              Your Space
-            </p>
-            <div className="mt-4 flex items-center gap-3">
-              <div className="h-14 w-14 overflow-hidden rounded-full bg-slate-200">
-                <img
-                  src={user?.photoURL || "/like.png"}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-bold text-black">{user?.displayName || "Cat User"}</p>
-                <p className="truncate text-sm text-slate-500">{user?.email || "Loading..."}</p>
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="sidebar-stat">
-                <span className="sidebar-stat-value">{posts.length}</span>
-                <span className="sidebar-stat-label">Posts</span>
-              </div>
-              <div className="sidebar-stat">
-                <span className="sidebar-stat-value">
-                  {posts.reduce((count, item) => count + (item.likes?.length || 0), 0)}
-                </span>
-                <span className="sidebar-stat-label">Likes</span>
-              </div>
-            </div>
+        <div className="rounded-[1.5rem] border border-white/80 bg-white/95 p-4 shadow-[0_20px_55px_rgba(15,23,42,0.08)]">
+          <p className="text-sm font-bold text-[#1d235c]">Active Friends</p>
+          <div className="mt-4 space-y-3">
+            {featuredCreators.length > 0 ? (
+              featuredCreators.map((creator) => (
+                <div key={creator.email} className="flex items-center gap-3">
+                  <div className="relative">
+                    <img
+                      src={creator.photo}
+                      alt={creator.name}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+                  </div>
+                  <span className="truncate text-sm text-slate-700">{creator.name}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500">Friends will appear here once people start posting.</p>
+            )}
           </div>
-
-          <div className="sidebar-card">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-              Posting Tips
-            </p>
-            <ul className="mt-4 space-y-3 text-sm text-slate-600">
-              <li>Lead with a strong visual to make the feed pop.</li>
-              <li>Keep captions short so the dashboard stays clean.</li>
-              <li>Use a voice note when you want the post to feel personal.</li>
-            </ul>
-          </div>
-        </aside>
-      </div>
+        </div>
+      </aside>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import { buildApiUrl } from "../api";
 import { monitorAuthState, syncAuthProfile } from "../firebase/index";
+import IonIcon from "./IonIcon";
 
 function Account() {
   const [user, setUser] = useState(null);
@@ -117,58 +118,98 @@ function Account() {
     }
   };
 
+  const providerId = user?.providerData?.[0]?.providerId;
+  const providerLabel = providerId === "google.com" ? "Google" : "Email and password";
+  const photoPreview = profilePhoto || user?.photoURL || "/like.png";
+
   return (
-    <div className="min-h-full bg-white p-4 md:px-8">
-      <div className="border-b-2 border-dashed border-slate-300 py-4">
-        <h1 className="text-3xl font-extrabold text-black">Account</h1>
-      </div>
-
-      <div className="py-6">
-        <div className="flex flex-col items-center justify-center gap-2">
-          <img
-            src={user?.photoURL || "/like.png"}
-            alt="Profile"
-            className="h-24 w-24 rounded-full object-cover"
-          />
-          <h1 className="text-xl font-bold text-black">{user?.displayName}</h1>
-          <h2 className="text-sm text-slate-500">{user?.email}</h2>
+    <div className="account-shell">
+      <section className="account-hero rounded-[2rem] border border-white/70 bg-white/85 shadow-[0_28px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+        <div className="account-hero-profile">
+          <img src={photoPreview} alt="Profile" className="account-avatar" />
+          <div>
+            <p className="section-label">Profile</p>
+            <h2>{profileName || user?.displayName || "Cat User"}</h2>
+            <p>{user?.email || "Loading account..."}</p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={editProfile}
+          className="button-primary inline-flex items-center gap-2"
+        >
+          <IonIcon name="save-outline" className="text-base" />
+          Save changes
+        </button>
+      </section>
 
-        <div className="mt-8 grid gap-4">
-          <input
-            type="text"
-            className="simple-input px-4 py-3"
-            placeholder="Display name"
-            value={profileName}
-            onChange={(event) => setProfileName(event.target.value)}
-          />
-          <input
-            type="url"
-            className="simple-input px-4 py-3"
-            placeholder="Profile photo URL"
-            value={profilePhoto}
-            onChange={(event) => setProfilePhoto(event.target.value)}
-          />
-        </div>
+      <div className="account-grid">
+        <section className="account-card rounded-[2rem] border border-white/70 bg-white/85 shadow-[0_28px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+          <p className="section-label">Edit details</p>
+          <div className="account-form-stack">
+            <input
+              type="text"
+              className="simple-input account-input"
+              placeholder="Display name"
+              value={profileName}
+              onChange={(event) => setProfileName(event.target.value)}
+            />
+            <input
+              type="url"
+              className="simple-input account-input"
+              placeholder="Profile photo URL"
+              value={profilePhoto}
+              onChange={(event) => setProfilePhoto(event.target.value)}
+            />
+          </div>
 
-        <div className="mt-6 flex flex-col gap-3 md:flex-row">
-          <button
-            type="button"
-            onClick={editProfile}
-            className="bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-slate-700"
-          >
-            Save Profile
-          </button>
+          {status ? (
+            <p
+              className={`account-status ${
+                status.toLowerCase().includes("failed") ? "account-status-danger" : ""
+              }`}
+            >
+              {status}
+            </p>
+          ) : null}
+        </section>
+
+        <section className="account-card rounded-[2rem] border border-white/70 bg-white/85 shadow-[0_28px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+          <p className="section-label">Account snapshot</p>
+          <div className="account-summary-list">
+            <div className="account-summary-item">
+              <IonIcon name="person-outline" className="text-lg text-slate-500" />
+              <span>Display name</span>
+              <strong>{profileName || "Not set"}</strong>
+            </div>
+            <div className="account-summary-item">
+              <IonIcon name="mail-outline" className="text-lg text-slate-500" />
+              <span>Email</span>
+              <strong>{user?.email || "Loading..."}</strong>
+            </div>
+            <div className="account-summary-item">
+              <IonIcon name="shield-checkmark-outline" className="text-lg text-slate-500" />
+              <span>Sign-in method</span>
+              <strong>{providerLabel}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section className="account-card account-danger-card rounded-[2rem] border border-white/70 bg-white/85 shadow-[0_28px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+          <p className="section-label">Danger zone</p>
+          <h3>Delete this account</h3>
+          <p className="account-danger-copy">
+            This removes your CatPost account and signs you out. Reauthentication may be required.
+          </p>
           <button
             type="button"
             onClick={deleteCurrentUser}
-            className="bg-red-400 px-5 py-3 text-sm font-bold text-white transition hover:bg-black"
+            className="button-danger inline-flex items-center gap-2"
           >
-            Delete Account
+            <IonIcon name="trash-outline" className="text-base" />
+            Delete account
           </button>
-        </div>
-
-        {status ? <p className="mt-4 text-sm text-slate-500">{status}</p> : null}
+        </section>
       </div>
     </div>
   );
